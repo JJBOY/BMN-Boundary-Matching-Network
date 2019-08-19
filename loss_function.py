@@ -94,5 +94,5 @@ def PEM_loss_function(match_iou, anchors_iou, confidence_mask, opt):
     num_entry = torch.sum(confidence_mask) * anchors_iou.size(0)
     clr_loss = bi_loss_2(match_iou, clr_anchors, opt, num_entry)
     #print(clr_loss,50* reg_loss)
-    loss = clr_loss + 50 * reg_loss
+    loss = clr_loss +  reg_loss
     return loss

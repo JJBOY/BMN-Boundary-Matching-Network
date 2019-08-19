@@ -23,7 +23,7 @@ def parse_opt():
     parser.add_argument(
         '--weight_decay',
         type=float,
-        default=5e-5)
+        default=1e-5)
 
     parser.add_argument(
         '--train_epochs',

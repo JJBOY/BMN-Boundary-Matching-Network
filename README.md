@@ -7,24 +7,26 @@ A pytorch-version implementation codes of paper:
 [[Arxiv Preprint]](https://arxiv.org/abs/1907.09702)
 
 
-# Prerequisites
+## Prerequisites
 
 These code is  implemented in Pytorch 0.4.1 + Python3 . 
 
 
 ## Download Datasets
 
- The author rescale the feature length of all videos 
-to same length 100, and he provide the rescaled feature at 
-here [BSN](https://github.com/wzmsltw/BSN-boundary-sensitive-network) .
+ The author rescaled the feature length of all videos 
+to same length 100, and he provided the rescaled feature at 
+ [here](https://github.com/wzmsltw/BSN-boundary-sensitive-network) .
 
 
-# Training and Testing  of BMN
+## Training and Testing  of BMN
 
 All configurations of BMN are saved in opts.py, where you can modify training and model parameter.
 
 
-1. For the first time to run the data, you should this cmd to generate the BM mask matrix:
+1. For the first time to run the project, you should use this cmd to generate the BM mask matrix:
+This cmd only need to use once. when you get the BM_mask.npy, you can directly
+train the BMN.
 ```
 python get_mask.py
 ```
@@ -58,6 +60,8 @@ sh bmn.sh
 
 
 ## Reference
+
+This implementation largely borrows from [BSN](https://github.com/wzmsltw/BSN-boundary-sensitive-network) by [Tianwei Lin](https://github.com/wzmsltw).
 
 code:[BSN](https://github.com/wzmsltw/BSN-boundary-sensitive-network)
 

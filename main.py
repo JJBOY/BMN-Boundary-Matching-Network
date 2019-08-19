@@ -1,3 +1,6 @@
+"""
+This implementation largely borrows from [BSN](https://github.com/wzmsltw/BSN-boundary-sensitive-network) by Tianwei Lin.
+"""
 import sys
 from dataset import VideoDataSet
 from loss_function import TEM_loss_function, PEM_loss_function
