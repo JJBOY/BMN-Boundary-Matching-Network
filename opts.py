@@ -23,12 +23,12 @@ def parse_opt():
     parser.add_argument(
         '--weight_decay',
         type=float,
-        default=1e-5)
+        default=1e-4)
 
     parser.add_argument(
         '--train_epochs',
         type=int,
-        default=15)
+        default=11)
     parser.add_argument(
         '--batch_size',
         type=int,
@@ -36,20 +36,20 @@ def parse_opt():
     parser.add_argument(
         '--step_size',
         type=int,
-        default=10)
+        default=9)
     parser.add_argument(
         '--step_gamma',
         type=float,
-        default=0.1)
+        default=0.2)
     # Overall Dataset settings
     parser.add_argument(
         '--video_info',
         type=str,
-        default="/home/zenghao/BSN/data/activitynet_annotations/video_info_new.csv")
+        default="/home/zenghao/BMN/data/activitynet_annotations/video_info_new.csv")
     parser.add_argument(
         '--video_anno',
         type=str,
-        default="/home/zenghao/BSN/data/activitynet_annotations/anet_anno_action.json")
+        default="/home/zenghao/BMN/data/activitynet_annotations/anet_anno_action.json")
     parser.add_argument(
         '--temporal_scale',
         type=int,
@@ -57,7 +57,7 @@ def parse_opt():
     parser.add_argument(
         '--boundary_ratio',
         type=float,
-        default=0.1)
+        default=0.05)
     parser.add_argument(
         '--feature_path',
         type=str,

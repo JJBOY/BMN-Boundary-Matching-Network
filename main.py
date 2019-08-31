@@ -1,6 +1,3 @@
-"""
-This implementation largely borrows from [BSN](https://github.com/wzmsltw/BSN-boundary-sensitive-network) by Tianwei Lin.
-"""
 import sys
 from dataset import VideoDataSet
 from loss_function import TEM_loss_function, PEM_loss_function
@@ -101,8 +98,9 @@ def test_BMN(data_loader, model, epoch, writer, opt):
 
 def BMN_Train(opt):
     writer = SummaryWriter()
-    model = BMN(opt).cuda()
-
+    #model = BMN(opt).cuda()
+    model=BMN(opt)
+    model=torch.nn.DataParallel(model, device_ids=[0,1]).cuda()
     optimizer = optim.Adam(model.parameters(), lr=opt["training_lr"], weight_decay=opt["weight_decay"])
 
     train_loader = torch.utils.data.DataLoader(VideoDataSet(opt, subset="train"),

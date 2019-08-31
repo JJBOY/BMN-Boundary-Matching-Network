@@ -6,6 +6,7 @@ A pytorch-version implementation codes of paper:
 
 [[Arxiv Preprint]](https://arxiv.org/abs/1907.09702)
 
+#NOTE:I AM __NOT__ THE AUTHOR OF THE PAPER!!! SO PLEASE DO NOT ASK ME FOR DETAILS OF THE PAPER!!!
 
 ## Prerequisites
 

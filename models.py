@@ -33,16 +33,11 @@ class BaseModel(torch.nn.Module):
                                stride=1, padding=1)
         self.reset_params()
 
-    @staticmethod
-    def weight_init(m):
-        if isinstance(m, nn.Conv1d):
-            nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
-            if m.bias is not None:
-                nn.init.constant_(m.bias, 0)
-
     def reset_params(self):
         for i, m in enumerate(self.modules()):
-            self.weight_init(m)
+            if isinstance(m, nn.Conv1d):
+                nn.init.normal_(m.weight, std=0.01)
+                nn.init.constant_(m.bias,0)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
@@ -60,36 +55,30 @@ class TEM(torch.nn.Module):
 
         self.conv1 = nn.Conv1d(in_channels=self.feat_dim, out_channels=self.c_hidden, kernel_size=3, stride=1,
                                padding=1)
-        self.conv2 = nn.Conv1d(in_channels=self.c_hidden, out_channels=self.c_hidden, kernel_size=3, stride=1,
+       
+        self.conv2 = nn.Conv1d(in_channels=self.c_hidden, out_channels=self.output_dim, kernel_size=3, stride=1,
                                padding=1)
-        self.conv3 = nn.Conv1d(in_channels=self.c_hidden, out_channels=self.output_dim, kernel_size=1, stride=1,
-                               padding=0)
         self.reset_params()
-
-    @staticmethod
-    def weight_init(m):
-        if isinstance(m, nn.Conv1d):
-            nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
-            if m.bias is not None:
-                nn.init.constant_(m.bias, 0)
 
     def reset_params(self):
         for i, m in enumerate(self.modules()):
-            self.weight_init(m)
+            if isinstance(m, nn.Conv1d):
+                nn.init.normal_(m.weight,std=0.01)
+                nn.init.constant_(m.bias,0)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        x = torch.sigmoid(0.1 * self.conv3(x))
+        x = torch.sigmoid(0.1*self.conv2(x))
         return x
 
 
 class BM_layer(torch.nn.Module):
     def __init__(self, bm_mask):
         super(BM_layer, self).__init__()
-        self.bm_mask = bm_mask  # T,n,D,T
+
         self.temporal_dim, self.num_sample_point, self.duration, _ = bm_mask.shape
-        self.bm_mask = bm_mask.view(self.temporal_dim, -1).cuda()
+        self.bm_mask = nn.Parameter(bm_mask.view(self.temporal_dim, -1),requires_grad=False)
+        
 
     def forward(self, data):  # N, C, T
         input_size = data.size()
@@ -126,12 +115,9 @@ class PEM(torch.nn.Module):
     @staticmethod
     def weight_init(m):
         if isinstance(m, nn.Conv1d) or isinstance(m, nn.Conv2d) or isinstance(m, nn.Conv3d):
-            nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
+            nn.init.normal_(m.weight,std=0.01)
             if m.bias is not None:
                 nn.init.constant_(m.bias, 0)
-        elif isinstance(m, nn.BatchNorm1d) or isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm3d):
-            nn.init.constant_(m.weight, 1)
-            nn.init.constant_(m.bias, 0)
 
     def reset_params(self):
         for i, m in enumerate(self.modules()):
@@ -142,7 +128,7 @@ class PEM(torch.nn.Module):
         x = F.relu(self.conv1(x)).squeeze(2)
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
-        x = torch.sigmoid(0.1 * self.conv4(x))
+        x = torch.sigmoid(0.1*self.conv4(x))
         return x
 
 
