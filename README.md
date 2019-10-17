@@ -11,13 +11,15 @@ Update(2019-10-17):
 I update the pytorch BMN codebase according to PaddlePaddle code provided by Baidu officially.
 Now my codebase get very close results to the paper.
 
+
 |  AN  | Recall |
 |: ----: |: ----: |
 | AR@1 |  33.7% |
 | AR@5 |  49.6% |
 | AR@10|  57.1% |
 |AR@100|  75.3% |
-|AUC|67.5|
+| AUC  |  67.5  |
+
 
 ![](./img/evaluation_result.jpg)
 
