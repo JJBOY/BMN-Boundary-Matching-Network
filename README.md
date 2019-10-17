@@ -9,7 +9,7 @@ A pytorch-version implementation codes of paper:
 ## Result
 __Update(2019-10-17)__: 
 I update the pytorch BMN codebase according to PaddlePaddle code provided by Baidu officially.
-Now my codebase get very close results to the paper. Actually my results are slowly higher 
+Now my codebase get very close results to the paper. Actually my results are slightly __higher__ 
 than the original paper.
 
 
