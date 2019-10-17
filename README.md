@@ -18,6 +18,7 @@ Now my codebase get very close results to the paper.
 | AR@10|  57.1% |
 |AR@100|  75.3% |
 |AUC|67.5|
+
 ![](./img/evaluation_result.jpg)
 
 ## Prerequisites
