@@ -13,7 +13,7 @@ Now my codebase get very close results to the paper.
 
 
 |  AN  | Recall |
-|: ----: |: ----: |
+| ---- |  ----  |
 | AR@1 |  33.7% |
 | AR@5 |  49.6% |
 | AR@10|  57.1% |
