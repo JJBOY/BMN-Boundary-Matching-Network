@@ -60,8 +60,8 @@ class VideoDataSet(data.Dataset):
         match_map = np.transpose(match_map, [1, 0, 2])  # [0,1] [1,2] [2,3].....[99,100]
         match_map = np.reshape(match_map, [-1, 2])  # [0,2] [1,3] [2,4].....[99,101]   # duration x start
         self.match_map = match_map  # duration is same in row, start is same in col
-        self.anchor_xmin = [self.temporal_gap * i for i in range(self.temporal_scale)]
-        self.anchor_xmax = [self.temporal_gap * i for i in range(1, self.temporal_scale + 1)]
+        self.anchor_xmin = [self.temporal_gap * (i-0.5) for i in range(self.temporal_scale)]
+        self.anchor_xmax = [self.temporal_gap * (i+0.5) for i in range(1, self.temporal_scale + 1)]
 
     def _load_file(self, index):
         video_name = self.video_list[index]
