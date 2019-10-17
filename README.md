@@ -6,7 +6,19 @@ A pytorch-version implementation codes of paper:
 
 [[Arxiv Preprint]](https://arxiv.org/abs/1907.09702)
 
-#NOTE:I AM __NOT__ THE AUTHOR OF THE PAPER!!! SO PLEASE DO NOT ASK ME FOR DETAILS OF THE PAPER!!!
+## Result
+Update(2019-10-17): 
+I update the pytorch BMN codebase according to PaddlePaddle code provided by Baidu officially.
+Now my codebase get very close results to the paper.
+
+|  AN  | Recall |
+|: ----: |: ----: |
+| AR@1 |  33.7% |
+| AR@5 |  49.6% |
+| AR@10|  57.1% |
+|AR@100|  75.3% |
+|AUC|67.5|
+![](./img/evaluation_result.jpg)
 
 ## Prerequisites
 
@@ -25,31 +37,15 @@ to same length 100, and he provided the rescaled feature at
 All configurations of BMN are saved in opts.py, where you can modify training and model parameter.
 
 
-1. For the first time to run the project, you should use this cmd to generate the BM mask matrix:
-This cmd only need to use once. when you get the BM_mask.npy, you can directly
-train the BMN.
+
+1. To train the BMN:
 ```
-python get_mask.py
+python main.py --mode train
 ```
 
-2. To train the BMN:
+2. To get the inference proposal of the validation videos and evaluate the proposals with recall and AUC:
 ```
-python main.py --module BMN --mode train
-```
-
-3. To get the inference proposal of the validation videos:
-```
-python main.py --module BMN --mode inference
-```
-
-4. To use the soft_nms to reduce the redundancy of the proposals:
-```
-python main.py --module Post_processing
-```
-
-5. To evaluate the proposals with recall and AUC:
-```
-python main.py --module Evaluation
+python main.py --mode inference
 ```
 
 Of course, you can complete all the process above in one line: 
