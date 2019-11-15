@@ -10,7 +10,7 @@ A pytorch-version implementation codes of paper:
 __Update(2019-10-17)__: 
 I update the pytorch BMN codebase according to PaddlePaddle code provided by Baidu officially.
 Now my codebase get very close results to the paper. Actually my results are slightly __higher__ 
-than the original paper. The model can be download [here](https://pan.baidu.com/s/1Fm4niHixw53cdhuuhf5baA). The model file doesn't need to be decompressed.
+than the original paper. The model can be download [here](https://pan.baidu.com/s/1Fm4niHixw53cdhuuhf5baA). Create a folder named "checkpoint" and put the model file in it.
 The csv_mean_100 files can be download [here](https://pan.baidu.com/s/19GI3_-uZbd_XynUO6g-8YQ#list/path=%2Fsharelink371590537-608856444000610%2Ftsn_feature&parentPath=%2Fsharelink371590537-608856444000610). Please use cat zip_csv_mean_100.z* > csv_mean_100.zip before unzip. After download and unzip, please put csv_mean_100 directory to ./data/activitynet_feature_cuhk/ .
 
 
