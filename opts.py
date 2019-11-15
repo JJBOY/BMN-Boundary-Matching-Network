@@ -42,11 +42,11 @@ def parse_opt():
     parser.add_argument(
         '--video_info',
         type=str,
-        default="/home/zenghao/BMN/data/activitynet_annotations/video_info_new.csv")
+        default="./data/activitynet_annotations/video_info_new.csv")
     parser.add_argument(
         '--video_anno',
         type=str,
-        default="/home/zenghao/BMN/data/activitynet_annotations/anet_anno_action.json")
+        default="./data/activitynet_annotations/anet_anno_action.json")
     parser.add_argument(
         '--temporal_scale',
         type=int,
@@ -54,7 +54,7 @@ def parse_opt():
     parser.add_argument(
         '--feature_path',
         type=str,
-        default="/home/zenghao/BSN/data/activitynet_feature_cuhk/")
+        default="./data/activitynet_feature_cuhk/")
 
     parser.add_argument(
         '--num_sample',
