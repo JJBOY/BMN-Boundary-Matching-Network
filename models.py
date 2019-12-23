@@ -48,7 +48,9 @@ class BMN(nn.Module):
             nn.ReLU(inplace=True)
         )
         self.x_3d_p = nn.Sequential(
-            nn.Conv3d(self.hidden_dim_1d, self.hidden_dim_3d, kernel_size=(self.num_sample, 1, 1)),
+            nn.Conv3d(self.hidden_dim_1d, self.hidden_dim_3d, 
+                      kernel_size=(self.num_sample, 1, 1)
+                      stride=(self.num_sample, 1, 1)),
             nn.ReLU(inplace=True)
         )
         self.x_2d_p = nn.Sequential(
