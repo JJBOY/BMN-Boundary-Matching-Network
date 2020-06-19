@@ -7,19 +7,21 @@ A pytorch-version implementation codes of paper:
 [[Arxiv Preprint]](https://arxiv.org/abs/1907.09702)
 
 ## Result
+__Update(2020-06-19)__:  improved the pefermance. The new model can be download [here](https://pan.baidu.com/s/1ctIV83-Oz9P3jWD1iYnR2g). 提取码：nk3h
+
 __Update(2019-10-17)__: 
 I update the pytorch BMN codebase according to PaddlePaddle code provided by Baidu officially.
 Now my codebase get very close results to the paper. Actually my results are slightly __higher__ 
 than the original paper. The model can be download [here](https://pan.baidu.com/s/1Fm4niHixw53cdhuuhf5baA).
 
 
-|  AN  | Recall |
-| ---- |  ----  |
-| AR@1 |  33.7% |
-| AR@5 |  49.6% |
-| AR@10|  57.1% |
-|AR@100|  75.3% |
-| AUC  |  67.5  |
+| AN     | Recall |
+| ------ | ------ |
+| AR@1   | 33.6%  |
+| AR@5   | 49.9%  |
+| AR@10  | 57.1%  |
+| AR@100 | 75.5%  |
+| AUC    | 67.7   |
 
 
 ![](./img/evaluation_result.jpg)
