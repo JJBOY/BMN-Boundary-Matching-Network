@@ -5,13 +5,11 @@ import torch.nn.functional as F
 
 
 def get_mask(tscale):
-    bm_mask = []
-    for idx in range(tscale):
-        mask_vector = [1 for i in range(tscale - idx)
-                       ] + [0 for i in range(idx)]
-        bm_mask.append(mask_vector)
-    bm_mask = np.array(bm_mask, dtype=np.float32)
-    return torch.Tensor(bm_mask)
+    mask = np.zeros([tscale, tscale], np.float32)
+    for i in range(tscale):
+        for j in range(i, tscale):
+            mask[i, j] = 1
+    return torch.Tensor(mask)
 
 
 def bmn_loss_func(pred_bm, pred_start, pred_end, gt_iou_map, gt_start, gt_end, bm_mask):
@@ -40,7 +38,7 @@ def tem_loss_func(pred_start, pred_end, gt_start, gt_end):
         coef_1 = 0.5 * ratio
         epsilon = 0.000001
         loss_pos = coef_1 * torch.log(pred_score + epsilon) * pmask
-        loss_neg = coef_0 * torch.log(1.0 - pred_score + epsilon)*(1.0 - pmask)
+        loss_neg = coef_0 * torch.log(1.0 - pred_score + epsilon) * (1.0 - pmask)
         loss = -1 * torch.mean(loss_pos + loss_neg)
         return loss
 
@@ -51,7 +49,6 @@ def tem_loss_func(pred_start, pred_end, gt_start, gt_end):
 
 
 def pem_reg_loss_func(pred_score, gt_iou_map, mask):
-
     u_hmask = (gt_iou_map > 0.7).float()
     u_mmask = ((gt_iou_map <= 0.7) & (gt_iou_map > 0.3)).float()
     u_lmask = ((gt_iou_map <= 0.3) & (gt_iou_map > 0.)).float()
@@ -72,16 +69,14 @@ def pem_reg_loss_func(pred_score, gt_iou_map, mask):
     u_slmask = (u_slmask > (1. - r_l)).float()
 
     weights = u_hmask + u_smmask + u_slmask
-    
-    loss = F.mse_loss(pred_score* weights, gt_iou_map* weights)
-    loss = 0.5 * torch.sum(loss*torch.ones(*weights.shape).cuda()) / torch.sum(weights)
 
+    loss = F.mse_loss(pred_score * weights, gt_iou_map * weights)
+    loss = 0.5 * torch.sum(loss * torch.ones(*weights.shape).cuda()) / torch.sum(weights)
 
     return loss
 
 
 def pem_cls_loss_func(pred_score, gt_iou_map, mask):
-
     pmask = (gt_iou_map > 0.9).float()
     nmask = (gt_iou_map <= 0.9).float()
     nmask = nmask * mask

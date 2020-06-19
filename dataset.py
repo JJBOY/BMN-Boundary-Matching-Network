@@ -23,7 +23,8 @@ class VideoDataSet(data.Dataset):
         self.video_info_path = opt["video_info"]
         self.video_anno_path = opt["video_anno"]
         self._getDatasetDict()
-        self._get_match_map()
+        self.anchor_xmin = [self.temporal_gap * (i - 0.5) for i in range(self.temporal_scale)]
+        self.anchor_xmax = [self.temporal_gap * (i + 0.5) for i in range(self.temporal_scale)]
 
     def _getDatasetDict(self):
         anno_df = pd.read_csv(self.video_info_path)
@@ -43,25 +44,9 @@ class VideoDataSet(data.Dataset):
         if self.mode == "train":
             match_score_start, match_score_end, confidence_score = self._get_train_label(index, self.anchor_xmin,
                                                                                          self.anchor_xmax)
-            return video_data,confidence_score, match_score_start, match_score_end
+            return video_data, confidence_score, match_score_start, match_score_end
         else:
             return index, video_data
-
-    def _get_match_map(self):
-        match_map = []
-        for idx in range(self.temporal_scale):
-            tmp_match_window = []
-            xmin = self.temporal_gap * idx
-            for jdx in range(1, self.temporal_scale + 1):
-                xmax = xmin + self.temporal_gap * jdx
-                tmp_match_window.append([xmin, xmax])
-            match_map.append(tmp_match_window)
-        match_map = np.array(match_map)  # 100x100x2
-        match_map = np.transpose(match_map, [1, 0, 2])  # [0,1] [1,2] [2,3].....[99,100]
-        match_map = np.reshape(match_map, [-1, 2])  # [0,2] [1,3] [2,4].....[99,101]   # duration x start
-        self.match_map = match_map  # duration is same in row, start is same in col
-        self.anchor_xmin = [self.temporal_gap * (i-0.5) for i in range(self.temporal_scale)]
-        self.anchor_xmax = [self.temporal_gap * (i+0.5) for i in range(1, self.temporal_scale + 1)]
 
     def _load_file(self, index):
         video_name = self.video_list[index]
@@ -90,15 +75,6 @@ class VideoDataSet(data.Dataset):
             tmp_start = max(min(1, tmp_info['segment'][0] / corrected_second), 0)
             tmp_end = max(min(1, tmp_info['segment'][1] / corrected_second), 0)
             gt_bbox.append([tmp_start, tmp_end])
-            tmp_gt_iou_map = iou_with_anchors(
-                self.match_map[:, 0], self.match_map[:, 1], tmp_start, tmp_end)
-            tmp_gt_iou_map = np.reshape(tmp_gt_iou_map,
-                                        [self.temporal_scale, self.temporal_scale])
-            gt_iou_map.append(tmp_gt_iou_map)
-        gt_iou_map = np.array(gt_iou_map)
-        gt_iou_map = np.max(gt_iou_map, axis=0)
-        gt_iou_map = torch.Tensor(gt_iou_map)
-        ##############################################################################################
 
         ####################################################################################################
         # generate R_s and R_e
@@ -110,6 +86,13 @@ class VideoDataSet(data.Dataset):
         gt_start_bboxs = np.stack((gt_xmins - gt_len_small / 2, gt_xmins + gt_len_small / 2), axis=1)
         gt_end_bboxs = np.stack((gt_xmaxs - gt_len_small / 2, gt_xmaxs + gt_len_small / 2), axis=1)
         #####################################################################################################
+
+        gt_iou_map = np.zeros([self.temporal_scale, self.temporal_scale])
+        for i in range(self.temporal_scale):
+            for j in range(i, self.temporal_scale):
+                gt_iou_map[i, j] = np.max(
+                    iou_with_anchors(i * self.temporal_gap, (j + 1) * self.temporal_gap, gt_xmins, gt_xmaxs))
+        gt_iou_map = torch.Tensor(gt_iou_map)
 
         ##########################################################################################################
         # calculate the ioa for all timestamp
@@ -133,11 +116,12 @@ class VideoDataSet(data.Dataset):
 
 if __name__ == '__main__':
     import opts
+
     opt = opts.parse_opt()
     opt = vars(opt)
     train_loader = torch.utils.data.DataLoader(VideoDataSet(opt, subset="train"),
                                                batch_size=opt["batch_size"], shuffle=True,
                                                num_workers=8, pin_memory=True)
-    for a,b,c,d in train_loader:
-        print(a.shape,b.shape,c.shape,d.shape)
+    for a, b, c, d in train_loader:
+        print(a.shape, b.shape, c.shape, d.shape)
         break

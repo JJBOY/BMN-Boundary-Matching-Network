@@ -48,7 +48,7 @@ class BMN(nn.Module):
             nn.ReLU(inplace=True)
         )
         self.x_3d_p = nn.Sequential(
-            nn.Conv3d(self.hidden_dim_1d, self.hidden_dim_3d, kernel_size=(self.num_sample, 1, 1)),
+            nn.Conv3d(self.hidden_dim_1d, self.hidden_dim_3d, kernel_size=(self.num_sample, 1, 1),stride=(self.num_sample, 1, 1)),
             nn.ReLU(inplace=True)
         )
         self.x_2d_p = nn.Sequential(
@@ -104,12 +104,12 @@ class BMN(nn.Module):
     def _get_interp1d_mask(self):
         # generate sample mask for each point in Boundary-Matching Map
         mask_mat = []
-        for start_index in range(self.tscale):
+        for end_index in range(self.tscale):
             mask_mat_vector = []
-            for duration_index in range(self.tscale):
-                if start_index + duration_index < self.tscale:
+            for start_index in range(self.tscale):
+                if start_index <= end_index:
                     p_xmin = start_index
-                    p_xmax = start_index + duration_index
+                    p_xmax = end_index + 1
                     center_len = float(p_xmax - p_xmin) + 1
                     sample_xmin = p_xmin - center_len * self.prop_boundary_ratio
                     sample_xmax = p_xmax + center_len * self.prop_boundary_ratio

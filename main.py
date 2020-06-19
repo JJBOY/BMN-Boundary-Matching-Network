@@ -121,49 +121,27 @@ def BMN_inference(opt):
             input_data = input_data.cuda()
             confidence_map, start, end = model(input_data)
 
-            #print(start.shape,end.shape,confidence_map.shape)
+            # print(start.shape,end.shape,confidence_map.shape)
             start_scores = start[0].detach().cpu().numpy()
             end_scores = end[0].detach().cpu().numpy()
             clr_confidence = (confidence_map[0][1]).detach().cpu().numpy()
             reg_confidence = (confidence_map[0][0]).detach().cpu().numpy()
 
-            max_start = max(start_scores)
-            max_end = max(end_scores)
-
-            ####################################################################################################
-            # generate the set of start points and end points
-            start_bins = np.zeros(len(start_scores))
-            start_bins[0] = 1  # [1,0,0...,0,1] 首末两帧
-            for idx in range(1, tscale - 1):
-                if start_scores[idx] > start_scores[idx + 1] and start_scores[idx] > start_scores[idx - 1]:
-                    start_bins[idx] = 1
-                elif start_scores[idx] > (0.5 * max_start):
-                    start_bins[idx] = 1
-
-            end_bins = np.zeros(len(end_scores))
-            end_bins[-1] = 1
-            for idx in range(1, tscale - 1):
-                if end_scores[idx] > end_scores[idx + 1] and end_scores[idx] > end_scores[idx - 1]:
-                    end_bins[idx] = 1
-                elif end_scores[idx] > (0.5 * max_end):
-                    end_bins[idx] = 1
-            ########################################################################################################
-
-            #########################################################################
+            
             # 遍历起始分界点与结束分界点的组合
             new_props = []
             for idx in range(tscale):
                 for jdx in range(tscale):
-                    start_index = jdx
-                    end_index = start_index + idx+1
-                    if end_index < tscale and start_bins[start_index] == 1 and end_bins[end_index] == 1:
-                        xmin = start_index/tscale
-                        xmax = end_index/tscale
+                    start_index = idx
+                    end_index = jdx + 1
+                    if start_index < end_index and  end_index<tscale :
+                        xmin = start_index / tscale
+                        xmax = end_index / tscale
                         xmin_score = start_scores[start_index]
                         xmax_score = end_scores[end_index]
                         clr_score = clr_confidence[idx, jdx]
                         reg_score = reg_confidence[idx, jdx]
-                        score = xmin_score * xmax_score * clr_score*reg_score
+                        score = xmin_score * xmax_score * clr_score * reg_score
                         new_props.append([xmin, xmax, xmin_score, xmax_score, clr_score, reg_score, score])
             new_props = np.stack(new_props)
             #########################################################################
