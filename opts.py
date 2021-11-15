@@ -15,7 +15,7 @@ def parse_opt():
     parser.add_argument(
         '--training_lr',
         type=float,
-        default=0.001)
+        default=0.001)  # 0.001
     parser.add_argument(
         '--weight_decay',
         type=float,
@@ -24,7 +24,7 @@ def parse_opt():
     parser.add_argument(
         '--train_epochs',
         type=int,
-        default=9)
+        default=50)
     parser.add_argument(
         '--batch_size',
         type=int,
@@ -32,21 +32,21 @@ def parse_opt():
     parser.add_argument(
         '--step_size',
         type=int,
-        default=7)
+        default=4)  # 7
     parser.add_argument(
         '--step_gamma',
         type=float,
-        default=0.1)
+        default=0.8)  # 0.1
 
     # Overall Dataset settings
     parser.add_argument(
         '--video_info',
         type=str,
-        default="data/activitynet_annotations/video_info_backup.csv")
+        default="data/activitynet_annotations/activity_net_1_3_new.json")
     parser.add_argument(
         '--video_anno',
         type=str,
-        default="data/activitynet_annotations/anet_anno_action_backup.json")
+        default="data/activitynet_annotations/activitynet_13_annotations.json")
     parser.add_argument(
         '--temporal_scale',
         type=int,
@@ -54,7 +54,7 @@ def parse_opt():
     parser.add_argument(
         '--feature_path',
         type=str,
-        default="data/activitynet_feature_cuhk/")
+        default="data/activitynet_feature_cuhk/fix_feat_100/")
 
     parser.add_argument(
         '--num_sample',
@@ -94,11 +94,11 @@ def parse_opt():
     parser.add_argument(
         '--result_file',
         type=str,
-        default="./output/result_proposal.json")
+        default="./output/result_proposal_new.json")
     parser.add_argument(
         '--save_fig_path',
         type=str,
-        default="./output/evaluation_result.jpg")
+        default="./output/evaluation_result_new.jpg")
 
     args = parser.parse_args()
 

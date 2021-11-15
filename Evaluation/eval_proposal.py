@@ -1,9 +1,7 @@
 import json
 import numpy as np
 import pandas as pd
-
-
-
+from tqdm import tqdm
 
 def interpolated_prec_rec(prec, rec):
     """Interpolated AP - VOCdevkit from VOC 2011.
@@ -98,6 +96,7 @@ class ANETproposal(object):
         # Retrieve blocked videos from server.
         if self.check_status:
             self.blocked_videos = get_blocked_videos()
+            print(f"Removing {len(self.blocked_videos)} blocked videos")
         else:
             self.blocked_videos = list()
         # Import ground truth and proposals.
@@ -200,6 +199,8 @@ class ANETproposal(object):
         method for the proposal task, we computes the area under the 
         average recall vs average number of proposals per video curve.
         """
+        print(f"Proposal: {self.proposal}")
+
         recall, avg_recall, proposals_per_video = average_recall_vs_avg_nr_proposals(
                 self.ground_truth, self.proposal,
                 max_avg_nr_proposals=self.max_avg_nr_proposals,
@@ -250,6 +251,9 @@ def average_recall_vs_avg_nr_proposals(ground_truth, proposals,
 
     ratio = max_avg_nr_proposals*float(video_lst.shape[0])/proposals.shape[0]
 
+    # (472800, 4), (4728,)
+    # print(proposals.shape, video_lst.shape)
+
     # Adaptation to query faster
     ground_truth_gbvn = ground_truth.groupby('video-id')
     proposals_gbvn = proposals.groupby('video-id')
@@ -257,7 +261,7 @@ def average_recall_vs_avg_nr_proposals(ground_truth, proposals,
     # For each video, computes tiou scores among the retrieved proposals.
     score_lst = []
     total_nr_proposals = 0
-    for videoid in video_lst:
+    for videoid in tqdm(video_lst):
 
         # Get proposals for this video.
         proposals_videoid = proposals_gbvn.get_group(videoid)
@@ -281,13 +285,19 @@ def average_recall_vs_avg_nr_proposals(ground_truth, proposals,
         if this_video_ground_truth.ndim != 2:
             this_video_ground_truth = np.expand_dims(this_video_ground_truth, axis=0)
 
+        # print(f'ratio {ratio}, this_video_proposals: {this_video_proposals.shape}')
         nr_proposals = np.minimum(int(this_video_proposals.shape[0] * ratio), this_video_proposals.shape[0])
         total_nr_proposals += nr_proposals
         this_video_proposals = this_video_proposals[:nr_proposals, :]
+        # print(f'prop_shape: {this_video_proposals.shape}, gt_shape: {this_video_ground_truth.shape}, gt: {this_video_ground_truth}')
 
         # Compute tiou scores.
         tiou = wrapper_segment_iou(this_video_proposals, this_video_ground_truth)
+        # print(f'tiou shape: {tiou.shape}\n tiou:{tiou}')
+        # print(f'tiou shape: {tiou.shape}')
         score_lst.append(tiou)
+
+    print("tiou:", tiou.shape)
 
     # Given that the length of the videos is really varied, we 
     # compute the number of proposals in terms of a ratio of the total 
@@ -296,6 +306,10 @@ def average_recall_vs_avg_nr_proposals(ground_truth, proposals,
 
     # Computes average recall.
     pcn_lst = np.arange(1, 101) / 100.0 *(max_avg_nr_proposals*float(video_lst.shape[0])/total_nr_proposals)
+    print('pcn_list', pcn_lst.shape)
+    print('video_lst', video_lst.shape)
+    print('tiou_thresholds', tiou_thresholds.shape)
+    print('tiou_thresholds', tiou_thresholds)
     matches = np.empty((video_lst.shape[0], pcn_lst.shape[0]))
     positives = np.empty(video_lst.shape[0])
     recall = np.empty((tiou_thresholds.shape[0], pcn_lst.shape[0]))
@@ -305,18 +319,27 @@ def average_recall_vs_avg_nr_proposals(ground_truth, proposals,
         # Inspect positives retrieved per video at different 
         # number of proposals (percentage of the total retrieved).
         for i, score in enumerate(score_lst):
-            # Total positives per video.
+            # Total positives per video. This is the number of ground-truth proposals
             positives[i] = score.shape[0]
             # Find proposals that satisfies minimum tiou threshold.
+            # print('score: ', score.shape, score)
             true_positives_tiou = score >= tiou
+            
             # Get number of proposals as a percentage of total retrieved.
             pcn_proposals = np.minimum((score.shape[1] * pcn_lst).astype(np.int), score.shape[1])
+
+            # pcn_proposals is just a range between 1 to 100
+            # print("pcn_proposals:", pcn_proposals.shape, (score.shape[1] * pcn_lst).astype(np.int))
 
             for j, nr_proposals in enumerate(pcn_proposals):
                 # Compute the number of matches for each percentage of the proposals
                 matches[i, j] = np.count_nonzero((true_positives_tiou[:, :nr_proposals]).sum(axis=1))
 
         # Computes recall given the set of matches per video.
+        # print('matches:', matches.shape)
+        # print('matches_sum', matches.sum(axis=0))
+        # print('positives', positives)
+        # print('recall[ridx, :]', (matches.sum(axis=0) / positives.sum()).shape)
         recall[ridx, :] = matches.sum(axis=0) / positives.sum()
 
     # Recall is averaged.
@@ -324,6 +347,7 @@ def average_recall_vs_avg_nr_proposals(ground_truth, proposals,
 
     # Get the average number of proposals per video.
     proposals_per_video = pcn_lst * (float(total_nr_proposals) / video_lst.shape[0])
-
+    print('proposals_per_video:', proposals_per_video)
+    print('recall:', recall.shape)
     return recall, avg_recall, proposals_per_video
 

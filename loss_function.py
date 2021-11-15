@@ -58,6 +58,8 @@ def pem_reg_loss_func(pred_score, gt_iou_map, mask):
     num_m = torch.sum(u_mmask)
     num_l = torch.sum(u_lmask)
 
+    # print(f"Num L = {num_l}, Num H = {num_h}, Num M = {num_m}")
+
     r_m = num_h / num_m
     u_smmask = torch.Tensor(np.random.rand(*gt_iou_map.shape)).cuda()
     u_smmask = u_mmask * u_smmask
@@ -71,6 +73,7 @@ def pem_reg_loss_func(pred_score, gt_iou_map, mask):
     weights = u_hmask + u_smmask + u_slmask
 
     loss = F.mse_loss(pred_score * weights, gt_iou_map * weights)
+    # print(f"Weights = {weights}")
     loss = 0.5 * torch.sum(loss * torch.ones(*weights.shape).cuda()) / torch.sum(weights)
 
     return loss

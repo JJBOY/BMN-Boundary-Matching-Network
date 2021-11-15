@@ -12,17 +12,22 @@ from models import BMN
 import pandas as pd
 from post_processing import BMN_post_processing
 from eval import evaluation_proposal
+import time
+from tqdm import tqdm
+# log
+import logging
+import wandb
 
 sys.dont_write_bytecode = True
 
 
-def train_BMN(data_loader, model, optimizer, epoch, bm_mask):
+def train_BMN(data_loader, model, optimizer, scheduler, epoch, bm_mask):
     model.train()
-    epoch_pemreg_loss = 0
-    epoch_pemclr_loss = 0
-    epoch_tem_loss = 0
-    epoch_loss = 0
-    for n_iter, (input_data, label_confidence, label_start, label_end) in enumerate(data_loader):
+    train_pemreg_loss = 0
+    train_pemclr_loss = 0
+    train_tem_loss = 0
+    train_loss = 0
+    for n_iter, (input_data, label_confidence, label_start, label_end) in tqdm(enumerate(data_loader), total=len(data_loader)):
         input_data = input_data.cuda()
         label_start = label_start.cuda()
         label_end = label_end.cuda()
@@ -33,27 +38,31 @@ def train_BMN(data_loader, model, optimizer, epoch, bm_mask):
         loss[0].backward()
         optimizer.step()
 
-        epoch_pemreg_loss += loss[2].cpu().detach().numpy()
-        epoch_pemclr_loss += loss[3].cpu().detach().numpy()
-        epoch_tem_loss += loss[1].cpu().detach().numpy()
-        epoch_loss += loss[0].cpu().detach().numpy()
+        train_pemreg_loss += loss[2].cpu().detach().numpy()
+        train_pemclr_loss += loss[3].cpu().detach().numpy()
+        train_tem_loss += loss[1].cpu().detach().numpy()
+        train_loss += loss[0].cpu().detach().numpy()
+
+    scheduler.step()
 
     print(
         "BMN training loss(epoch %d): tem_loss: %.03f, pem class_loss: %.03f, pem reg_loss: %.03f, total_loss: %.03f" % (
-            epoch, epoch_tem_loss / (n_iter + 1),
-            epoch_pemclr_loss / (n_iter + 1),
-            epoch_pemreg_loss / (n_iter + 1),
-            epoch_loss / (n_iter + 1)))
+            epoch, train_tem_loss / (n_iter + 1),
+            train_pemclr_loss / (n_iter + 1),
+            train_pemreg_loss / (n_iter + 1),
+            train_loss / (n_iter + 1)))
+
+    return train_tem_loss / (n_iter + 1), train_pemclr_loss / (n_iter + 1), train_pemreg_loss / (n_iter + 1), train_loss / (n_iter + 1)
 
 
-def test_BMN(data_loader, model, epoch, bm_mask):
+def validate_BMN(val_data_loader, model, epoch, bm_mask):
     model.eval()
     best_loss = 1e10
-    epoch_pemreg_loss = 0
-    epoch_pemclr_loss = 0
-    epoch_tem_loss = 0
-    epoch_loss = 0
-    for n_iter, (input_data, label_confidence, label_start, label_end) in enumerate(data_loader):
+    val_pemreg_loss = 0
+    val_pemclr_loss = 0
+    val_tem_loss = 0
+    val_loss = 0
+    for n_iter, (input_data, label_confidence, label_start, label_end) in tqdm(enumerate(val_data_loader), total=len(val_data_loader)):
         input_data = input_data.cuda()
         label_start = label_start.cuda()
         label_end = label_end.cuda()
@@ -62,27 +71,37 @@ def test_BMN(data_loader, model, epoch, bm_mask):
         confidence_map, start, end = model(input_data)
         loss = bmn_loss_func(confidence_map, start, end, label_confidence, label_start, label_end, bm_mask.cuda())
 
-        epoch_pemreg_loss += loss[2].cpu().detach().numpy()
-        epoch_pemclr_loss += loss[3].cpu().detach().numpy()
-        epoch_tem_loss += loss[1].cpu().detach().numpy()
-        epoch_loss += loss[0].cpu().detach().numpy()
+        val_pemreg_loss += loss[2].cpu().detach().numpy()
+        val_pemclr_loss += loss[3].cpu().detach().numpy()
+        val_tem_loss += loss[1].cpu().detach().numpy()
+        val_loss += loss[0].cpu().detach().numpy()
 
     print(
-        "BMN training loss(epoch %d): tem_loss: %.03f, pem class_loss: %.03f, pem reg_loss: %.03f, total_loss: %.03f" % (
-            epoch, epoch_tem_loss / (n_iter + 1),
-            epoch_pemclr_loss / (n_iter + 1),
-            epoch_pemreg_loss / (n_iter + 1),
-            epoch_loss / (n_iter + 1)))
+        "Validation loss(epoch %d): tem_loss: %.03f, pem class_loss: %.03f, pem reg_loss: %.03f, total_loss: %.03f" % (
+            epoch, val_tem_loss / (n_iter + 1),
+            val_pemclr_loss / (n_iter + 1),
+            val_pemreg_loss / (n_iter + 1),
+            val_loss / (n_iter + 1)))
 
-    state = {'epoch': epoch + 1,
-             'state_dict': model.state_dict()}
-    torch.save(state, opt["checkpoint_path"] + "/BMN_checkpoint.pth.tar")
-    if epoch_loss < best_loss:
-        best_loss = epoch_loss
-        torch.save(state, opt["checkpoint_path"] + "/BMN_best.pth.tar")
+    return val_tem_loss / (n_iter + 1), val_pemclr_loss / (n_iter + 1), val_pemreg_loss / (n_iter + 1), val_loss / (n_iter + 1)
 
 
 def BMN_Train(opt):
+    # logging
+    log_dir = './logs'
+    if not os.path.exists(log_dir):
+        os.mkdir(log_dir)
+
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+    # Create log file and add config opts
+    logging.basicConfig(filename=os.path.join(log_dir, f'run_{time.strftime("%b%e-%H%M")}'), level=logging.WARNING)
+    logging.warning(str(opt))
+    # end logging
+
+    # wandb.init(project='11785-Project-Grp9',
+    #            config=opt)# init WandB
+
     model = BMN(opt)
     model = torch.nn.DataParallel(model, device_ids=[0, 1]).cuda()
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=opt["training_lr"],
@@ -98,10 +117,43 @@ def BMN_Train(opt):
 
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=opt["step_size"], gamma=opt["step_gamma"])
     bm_mask = get_mask(opt["temporal_scale"])
-    for epoch in range(opt["train_epochs"]):
-        scheduler.step()
-        train_BMN(train_loader, model, optimizer, epoch, bm_mask)
-        test_BMN(test_loader, model, epoch, bm_mask)
+    epochs = opt["train_epochs"]
+    print(f"Starting training for {epochs} epochs")
+    for epoch in range(epochs):
+        print(f"Learning rate: {optimizer.param_groups[0]['lr']:.5f}")
+        train_tem_loss, train_pemclr_loss, train_pemreg_loss, train_loss = train_BMN(train_loader, model, optimizer, scheduler, epoch, bm_mask)
+        val_tem_loss, val_pemclr_loss, val_pemreg_loss, val_loss = validate_BMN(test_loader, model, epoch, bm_mask)
+
+        logging.warning("Training loss(epoch %d): tem_loss: %.03f, pem class_loss: %.03f, pem reg_loss: %.03f, total_loss: %.03f" % (
+            epoch, train_tem_loss,
+            train_pemclr_loss,
+            train_pemreg_loss,
+            train_loss)) # log train stats
+
+        logging.warning("Validation loss(epoch %d): tem_loss: %.03f, pem class_loss: %.03f, pem reg_loss: %.03f, total_loss: %.03f" % (
+            epoch, val_tem_loss,
+            val_pemclr_loss,
+            val_pemreg_loss,
+            val_loss)) # log val stats
+
+        # wandb log
+        wandb.log({'epoch': epoch,
+                    'lr': optimizer.param_groups[0]['lr'], 
+                    'train_tem_loss': train_tem_loss,
+                    'train_pemreg_loss': train_pemreg_loss,
+                    'train_pemclr_loss': train_pemclr_loss,
+                    'train_loss': train_loss,
+                    'val_tem_loss': val_tem_loss,
+                    'val_pemreg_loss': val_pemreg_loss,
+                    'val_pemclr_loss': val_pemclr_loss,
+                    'val_loss': val_loss,
+                })
+
+        state = {'epoch': epoch,
+                'state_dict': model.state_dict(),
+                'optim_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict()}
+        torch.save(state, opt["checkpoint_path"] + f"/epoch_{epoch}_{int(time.time())}.pth.tar")
 
 
 def BMN_inference(opt):
@@ -116,7 +168,7 @@ def BMN_inference(opt):
                                               num_workers=8, pin_memory=True, drop_last=False)
     tscale = opt["temporal_scale"]
     with torch.no_grad():
-        for idx, input_data in test_loader:
+        for idx, input_data in tqdm(test_loader, total=len(test_loader)):
             video_name = test_loader.dataset.video_list[idx[0]]
             input_data = input_data.cuda()
             confidence_map, start, end = model(input_data)
@@ -127,8 +179,6 @@ def BMN_inference(opt):
             clr_confidence = (confidence_map[0][1]).detach().cpu().numpy()
             reg_confidence = (confidence_map[0][0]).detach().cpu().numpy()
 
-            
-            # 遍历起始分界点与结束分界点的组合
             new_props = []
             for idx in range(tscale):
                 for jdx in range(tscale):
@@ -157,9 +207,9 @@ def main(opt):
     elif opt["mode"] == "inference":
         if not os.path.exists("output/BMN_results"):
             os.makedirs("output/BMN_results")
-        BMN_inference(opt)
+        # BMN_inference(opt)
         print("Post processing start")
-        BMN_post_processing(opt)
+        # BMN_post_processing(opt)
         print("Post processing finished")
         evaluation_proposal(opt)
 

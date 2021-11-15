@@ -33,6 +33,7 @@ def plot_metric(opt,average_nr_proposals, average_recall, recall, tiou_threshold
     for i in range(recall.shape[0]):
         area_under_curve[i] = np.trapz(recall[i], average_nr_proposals)
 
+    print(f'auc: {area_under_curve}\n')
     for idx, tiou in enumerate(tiou_thresholds[::2]):
         ax.plot(average_nr_proposals, recall[2*idx,:], color=colors[idx+1],
                 label="tiou=[" + str(tiou) + "], area=" + str(int(area_under_curve[2*idx]*100)/100.), 
@@ -51,17 +52,20 @@ def plot_metric(opt,average_nr_proposals, average_recall, recall, tiou_threshold
     plt.ylim([0, 1.0])
     plt.setp(plt.axes().get_xticklabels(), fontsize=fn_size)
     plt.setp(plt.axes().get_yticklabels(), fontsize=fn_size)
-    #plt.show()    
+    # plt.show()    
     plt.savefig(opt["save_fig_path"])
-
 def evaluation_proposal(opt):
     
     uniform_average_nr_proposals_valid, uniform_average_recall_valid, uniform_recall_valid = run_evaluation(
-        "./Evaluation/data/activity_net_1_3_new.json",
+        opt["video_info"],
         opt["result_file"],
         max_avg_nr_proposals=100,
         tiou_thresholds=np.linspace(0.5, 0.95, 10),
         subset='validation')
+
+    np.save('uniform_average_nr_proposals_valid.npy', uniform_average_nr_proposals_valid)
+    np.save('uniform_average_recall_valid.npy', uniform_average_recall_valid)
+    np.save('uniform_recall_valid.npy', uniform_recall_valid)
     
     plot_metric(opt,uniform_average_nr_proposals_valid, uniform_average_recall_valid, uniform_recall_valid)
     print( "AR@1 is \t",np.mean(uniform_recall_valid[:,0]))

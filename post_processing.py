@@ -14,23 +14,43 @@ def load_json(file):
 
 
 def getDatasetDict(opt):
-    df = pd.read_csv(opt["video_info"])
-    json_data = load_json(opt["video_anno"])
-    database = json_data
-    video_dict = {}
-    for i in range(len(df)):
-        video_name = df.video.values[i]
-        video_info = database[video_name]
-        video_new_info = {}
-        video_new_info['duration_frame'] = video_info['duration_frame']
-        video_new_info['duration_second'] = video_info['duration_second']
-        video_new_info["feature_frame"] = video_info['feature_frame']
-        video_subset = df.subset.values[i]
-        video_new_info['annotations'] = video_info['annotations']
-        if video_subset == 'validation':
-            video_dict[video_name] = video_new_info
-    return video_dict
+    # df = pd.read_csv(opt["video_info"])
+    # json_data = load_json(opt["video_anno"])
+    # database = json_data
+    # video_dict = {}
+    # for i in range(len(df)):
+    #     video_name = df.video.values[i]
+    #     video_info = database[video_name]
+    #     video_new_info = {}
+    #     video_new_info['duration_frame'] = video_info['duration_frame']
+    #     video_new_info['duration_second'] = video_info['duration_second']
+    #     video_new_info["feature_frame"] = video_info['feature_frame']
+    #     video_subset = df.subset.values[i]
+    #     video_new_info['annotations'] = video_info['annotations']
+    #     if video_subset == 'validation':
+    #         video_dict[video_name] = video_new_info
+    # return video_dict
 
+    subset = "validation"
+    anno_database1 = load_json(opt["video_anno"])
+    anno_database2 = load_json(opt["video_info"])
+    anno_database2 = anno_database2['database']
+
+    video_dict = {}
+    for key, items in anno_database1.items():
+        video_name = key
+
+        video_info = items
+        temp_dict = anno_database2[key[2:]]
+        video_info['resolution'] = temp_dict['resolution']
+        video_info['url'] = temp_dict['url']
+
+        video_subset = items['subset']
+        if subset in video_subset:
+            video_dict[video_name] = video_info
+
+    return video_dict
+        
 
 def soft_nms(df, alpha, t1, t2):
     '''
@@ -78,12 +98,15 @@ def video_post_process(opt, video_list, video_dict):
     for video_name in video_list:
         df = pd.read_csv("./output/BMN_results/" + video_name + ".csv")
 
+        # print("\JEFFERY WAS HERE\n")
+
         if len(df) > 1:
             snms_alpha = opt["soft_nms_alpha"]
             snms_t1 = opt["soft_nms_low_thres"]
             snms_t2 = opt["soft_nms_high_thres"]
             df = soft_nms(df, snms_alpha, snms_t1, snms_t2)
 
+        # print(video_name, len(df))
         df = df.sort_values(by="score", ascending=False)
         video_info = video_dict[video_name]
         video_duration = float(video_info["duration_frame"] // 16 * 16) / video_info["duration_frame"] * video_info[
@@ -105,6 +128,12 @@ def BMN_post_processing(opt):
     global result_dict
     result_dict = mp.Manager().dict()
 
+    # result_dict = {}
+
+    # print(len(video_list))
+    # video_post_process(opt, video_list, video_dict)
+
+
     num_videos = len(video_list)
     num_videos_per_thread = num_videos // opt["post_process_thread"]
     processes = []
@@ -120,7 +149,9 @@ def BMN_post_processing(opt):
     for p in processes:
         p.join()
 
+    
     result_dict = dict(result_dict)
+    # print("\nBEN WAS HERE\n", result_dict)
     output_dict = {"version": "VERSION 1.3", "results": result_dict, "external_data": {}}
     outfile = open(opt["result_file"], "w")
     json.dump(output_dict, outfile)

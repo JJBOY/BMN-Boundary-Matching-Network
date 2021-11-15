@@ -20,22 +20,52 @@ class VideoDataSet(data.Dataset):
         self.subset = subset
         self.mode = opt["mode"]
         self.feature_path = opt["feature_path"]
-        self.video_info_path = opt["video_info"]
         self.video_anno_path = opt["video_anno"]
+        self.video_info_path = opt["video_info"]
         self._getDatasetDict()
         self.anchor_xmin = [self.temporal_gap * (i - 0.5) for i in range(self.temporal_scale)]
         self.anchor_xmax = [self.temporal_gap * (i + 0.5) for i in range(self.temporal_scale)]
 
     def _getDatasetDict(self):
-        anno_df = pd.read_csv(self.video_info_path)
-        anno_database = load_json(self.video_anno_path)
+        # anno_df = pd.read_csv(self.video_info_path)
+        # anno_database = load_json(self.video_anno_path)
+        # self.video_dict = {}
+        # for i in range(len(anno_df)):
+        #     video_name = anno_df.video.values[i]
+        #     video_info = anno_database[video_name]
+        #     video_subset = anno_df.subset.values[i]
+        #     if self.subset in video_subset:
+        #         self.video_dict[video_name] = video_info
+        # self.video_list = list(self.video_dict.keys())
+        # print("%s subset video numbers: %d" % (self.subset, len(self.video_list)))
+
+        anno_database1 = load_json(self.video_anno_path)
+        anno_database2 = load_json(self.video_info_path)
+        anno_database2 = anno_database2['database']
+
         self.video_dict = {}
-        for i in range(len(anno_df)):
-            video_name = anno_df.video.values[i]
-            video_info = anno_database[video_name]
-            video_subset = anno_df.subset.values[i]
+
+        # Not sure why they don't save testing labels so here they are
+        self.rest_dict = {}
+
+        # for i in range(len(anno_df)):
+        for key, items in anno_database1.items():
+            video_name = key
+
+            video_info = items
+            temp_dict = anno_database2[key[2:]]
+            video_info['resolution'] = temp_dict['resolution']
+            video_info['url'] = temp_dict['url']
+
+            video_subset = items['subset']
+            # video_name = anno_df.video.values[i]
+            # video_info = anno_database[video_name]
+            # video_subset = anno_df.subset.values[i]
             if self.subset in video_subset:
                 self.video_dict[video_name] = video_info
+            else:
+                self.rest_dict[video_name] = video_info
+
         self.video_list = list(self.video_dict.keys())
         print("%s subset video numbers: %d" % (self.subset, len(self.video_list)))
 
@@ -50,8 +80,10 @@ class VideoDataSet(data.Dataset):
 
     def _load_file(self, index):
         video_name = self.video_list[index]
-        video_df = pd.read_csv(self.feature_path + "csv_mean_" + str(self.temporal_scale) + "/" + video_name + ".csv")
-        video_data = video_df.values[:, :]
+        # video_df = pd.read_csv(self.feature_path + "csv_mean_" + str(self.temporal_scale) + "/" + video_name + ".csv")
+        # video_data = video_df.values[:, :]
+        video_data = np.load(self.feature_path + video_name + ".npy")
+        print(f'video_data: {video_data.shape}')
         video_data = torch.Tensor(video_data)
         video_data = torch.transpose(video_data, 0, 1)
         video_data.float()
@@ -107,7 +139,6 @@ class VideoDataSet(data.Dataset):
         match_score_start = torch.Tensor(match_score_start)
         match_score_end = torch.Tensor(match_score_end)
         ############################################################################################################
-
         return match_score_start, match_score_end, gt_iou_map
 
     def __len__(self):
