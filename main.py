@@ -161,7 +161,7 @@ def BMN_Train(opt):
 
         
         if not best_loss or val_loss < best_loss:
-            best_loss = epoch_loss
+            best_loss = val_loss
             torch.save(state, opt["checkpoint_path"] + f"/{opt['experiment_name']}_BMN_best.pth.tar")
 
 
