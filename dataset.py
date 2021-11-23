@@ -83,7 +83,7 @@ class VideoDataSet(data.Dataset):
         # video_df = pd.read_csv(self.feature_path + "csv_mean_" + str(self.temporal_scale) + "/" + video_name + ".csv")
         # video_data = video_df.values[:, :]
         video_data = np.load(self.feature_path + video_name + ".npy")
-        print(f'video_data: {video_data.shape}')
+        # print(f'video_data: {video_data.shape}')
         video_data = torch.Tensor(video_data)
         video_data = torch.transpose(video_data, 0, 1)
         video_data.float()

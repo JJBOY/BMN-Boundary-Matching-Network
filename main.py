@@ -82,6 +82,7 @@ def validate_BMN(val_data_loader, model, epoch, bm_mask):
             val_pemclr_loss / (n_iter + 1),
             val_pemreg_loss / (n_iter + 1),
             val_loss / (n_iter + 1)))
+    
 
     return val_tem_loss / (n_iter + 1), val_pemclr_loss / (n_iter + 1), val_pemreg_loss / (n_iter + 1), val_loss / (n_iter + 1)
 
@@ -98,9 +99,10 @@ def BMN_Train(opt):
     logging.basicConfig(filename=os.path.join(log_dir, f'run_{time.strftime("%b%e-%H%M")}'), level=logging.WARNING)
     logging.warning(str(opt))
     # end logging
-
-    # wandb.init(project='11785-Project-Grp9',
-    #            config=opt)# init WandB
+    if opt["experiment_name"] != "debug":
+        wandb.init(project='11785-Project-Grp9',
+                    config=opt,
+                    name=opt['experiment_name'])# init WandB
 
     model = BMN(opt)
     model = torch.nn.DataParallel(model, device_ids=[0, 1]).cuda()
@@ -119,47 +121,54 @@ def BMN_Train(opt):
     bm_mask = get_mask(opt["temporal_scale"])
     epochs = opt["train_epochs"]
     print(f"Starting training for {epochs} epochs")
+    best_loss = None
     for epoch in range(epochs):
         print(f"Learning rate: {optimizer.param_groups[0]['lr']:.5f}")
         train_tem_loss, train_pemclr_loss, train_pemreg_loss, train_loss = train_BMN(train_loader, model, optimizer, scheduler, epoch, bm_mask)
         val_tem_loss, val_pemclr_loss, val_pemreg_loss, val_loss = validate_BMN(test_loader, model, epoch, bm_mask)
 
-        logging.warning("Training loss(epoch %d): tem_loss: %.03f, pem class_loss: %.03f, pem reg_loss: %.03f, total_loss: %.03f" % (
-            epoch, train_tem_loss,
-            train_pemclr_loss,
-            train_pemreg_loss,
-            train_loss)) # log train stats
+        # logging.warning("Training loss(epoch %d): tem_loss: %.03f, pem class_loss: %.03f, pem reg_loss: %.03f, total_loss: %.03f" % (
+        #     epoch, train_tem_loss,
+        #     train_pemclr_loss,
+        #     train_pemreg_loss,
+        #     train_loss)) # log train stats
 
-        logging.warning("Validation loss(epoch %d): tem_loss: %.03f, pem class_loss: %.03f, pem reg_loss: %.03f, total_loss: %.03f" % (
-            epoch, val_tem_loss,
-            val_pemclr_loss,
-            val_pemreg_loss,
-            val_loss)) # log val stats
+        # logging.warning("Validation loss(epoch %d): tem_loss: %.03f, pem class_loss: %.03f, pem reg_loss: %.03f, total_loss: %.03f" % (
+        #     epoch, val_tem_loss,
+        #     val_pemclr_loss,
+        #     val_pemreg_loss,
+        #     val_loss)) # log val stats
 
         # wandb log
-        wandb.log({'epoch': epoch,
-                    'lr': optimizer.param_groups[0]['lr'], 
-                    'train_tem_loss': train_tem_loss,
-                    'train_pemreg_loss': train_pemreg_loss,
-                    'train_pemclr_loss': train_pemclr_loss,
-                    'train_loss': train_loss,
-                    'val_tem_loss': val_tem_loss,
-                    'val_pemreg_loss': val_pemreg_loss,
-                    'val_pemclr_loss': val_pemclr_loss,
-                    'val_loss': val_loss,
-                })
+        if opt["experiment_name"] != "debug":
+            wandb.log({'epoch': epoch,
+                        'lr': optimizer.param_groups[0]['lr'],
+                        'train_tem_loss': train_tem_loss,
+                        'train_pemreg_loss': train_pemreg_loss,
+                        'train_pemclr_loss': train_pemclr_loss,
+                        'train_loss': train_loss,
+                        'val_tem_loss': val_tem_loss,
+                        'val_pemreg_loss': val_pemreg_loss,
+                        'val_pemclr_loss': val_pemclr_loss,
+                        'val_loss': val_loss,
+                    })
 
         state = {'epoch': epoch,
                 'state_dict': model.state_dict(),
                 'optim_state_dict': optimizer.state_dict(),
                 'scheduler_state_dict': scheduler.state_dict()}
-        torch.save(state, opt["checkpoint_path"] + f"/epoch_{epoch}_{int(time.time())}.pth.tar")
+        torch.save(state, opt["checkpoint_path"] + f"/{opt['experiment_name']}_{epoch}.pth.tar")
+
+        
+        if not best_loss or val_loss < best_loss:
+            best_loss = epoch_loss
+            torch.save(state, opt["checkpoint_path"] + f"/{opt['experiment_name']}_BMN_best.pth.tar")
 
 
 def BMN_inference(opt):
     model = BMN(opt)
     model = torch.nn.DataParallel(model, device_ids=[0, 1]).cuda()
-    checkpoint = torch.load(opt["checkpoint_path"] + "/BMN_best.pth.tar")
+    checkpoint = torch.load(opt["checkpoint_path"] + f"/{opt['experiment_name']}_BMN_best.pth.tar")
     model.load_state_dict(checkpoint['state_dict'])
     model.eval()
 

@@ -24,7 +24,7 @@ def parse_opt():
     parser.add_argument(
         '--train_epochs',
         type=int,
-        default=50)
+        default=15)
     parser.add_argument(
         '--batch_size',
         type=int,
@@ -32,11 +32,11 @@ def parse_opt():
     parser.add_argument(
         '--step_size',
         type=int,
-        default=4)  # 7
+        default=7)  # 7
     parser.add_argument(
         '--step_gamma',
         type=float,
-        default=0.8)  # 0.1
+        default=0.1)  # 0.1
 
     # Overall Dataset settings
     parser.add_argument(
@@ -99,6 +99,11 @@ def parse_opt():
         '--save_fig_path',
         type=str,
         default="./output/evaluation_result_new.jpg")
+    parser.add_argument(
+        '--experiment_name',
+        type=str,
+        default='debug'
+    )
 
     args = parser.parse_args()
 
