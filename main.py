@@ -43,8 +43,6 @@ def train_BMN(data_loader, model, optimizer, scheduler, epoch, bm_mask):
         train_tem_loss += loss[1].cpu().detach().numpy()
         train_loss += loss[0].cpu().detach().numpy()
 
-    scheduler.step()
-
     print(
         "BMN training loss(epoch %d): tem_loss: %.03f, pem class_loss: %.03f, pem reg_loss: %.03f, total_loss: %.03f" % (
             epoch, train_tem_loss / (n_iter + 1),
@@ -83,7 +81,6 @@ def validate_BMN(val_data_loader, model, epoch, bm_mask):
             val_pemreg_loss / (n_iter + 1),
             val_loss / (n_iter + 1)))
     
-
     return val_tem_loss / (n_iter + 1), val_pemclr_loss / (n_iter + 1), val_pemreg_loss / (n_iter + 1), val_loss / (n_iter + 1)
 
 
@@ -102,7 +99,7 @@ def BMN_Train(opt):
     if opt["experiment_name"] != "debug":
         wandb.init(project='11785-Project-Grp9',
                     config=opt,
-                    name=opt['experiment_name'])# init WandB
+                    name=opt['experiment_name'])  # init WandB
 
     model = BMN(opt)
     model = torch.nn.DataParallel(model, device_ids=[0, 1]).cuda()
@@ -117,7 +114,7 @@ def BMN_Train(opt):
                                               batch_size=opt["batch_size"], shuffle=False,
                                               num_workers=8, pin_memory=True)
 
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=opt["step_size"], gamma=opt["step_gamma"])
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=1, factor=opt["step_gamma"], verbose=True)
     bm_mask = get_mask(opt["temporal_scale"])
     epochs = opt["train_epochs"]
     print(f"Starting training for {epochs} epochs")
@@ -126,6 +123,7 @@ def BMN_Train(opt):
         print(f"Learning rate: {optimizer.param_groups[0]['lr']:.5f}")
         train_tem_loss, train_pemclr_loss, train_pemreg_loss, train_loss = train_BMN(train_loader, model, optimizer, scheduler, epoch, bm_mask)
         val_tem_loss, val_pemclr_loss, val_pemreg_loss, val_loss = validate_BMN(test_loader, model, epoch, bm_mask)
+        scheduler.step(val_loss)
 
         # logging.warning("Training loss(epoch %d): tem_loss: %.03f, pem class_loss: %.03f, pem reg_loss: %.03f, total_loss: %.03f" % (
         #     epoch, train_tem_loss,
@@ -217,9 +215,9 @@ def main(opt):
     elif opt["mode"] == "inference":
         if not os.path.exists("output/BMN_results"):
             os.makedirs("output/BMN_results")
-        # BMN_inference(opt)
+        BMN_inference(opt)
         print("Post processing start")
-        # BMN_post_processing(opt)
+        BMN_post_processing(opt)
         print("Post processing finished")
         evaluation_proposal(opt)
 
