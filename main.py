@@ -168,6 +168,7 @@ def BMN_Train(opt):
 def BMN_inference(opt):
     model = BMN(opt)
     model = torch.nn.DataParallel(model, device_ids=[0, 1]).cuda()
+    print(opt["checkpoint_path"] + f"/{opt['experiment_name']}_BMN_best.pth.tar")
     checkpoint = torch.load(opt["checkpoint_path"] + f"/{opt['experiment_name']}_BMN_best.pth.tar")
     model.load_state_dict(checkpoint['state_dict'])
     model.eval()

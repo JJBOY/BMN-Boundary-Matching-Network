@@ -78,16 +78,46 @@ class VideoDataSet(data.Dataset):
         else:
             return index, video_data
 
+    def _add_global_features(self, video_data):
+            global_mean = np.mean(video_data, axis=0)
+            global_mean_repeated = np.tile(global_mean,(100,1))
+            video_data_with_global = np.concatenate((video_data, global_mean_repeated), axis=1)
+            return video_data_with_global
+
+    def _get_shifted_features(self, feats, max_shift=10, shift_prob=0.8):
+        num_timesteps, num_feats = feats.shape
+
+        shifted_feats = np.zeros_like(feats)
+        features_to_shift = (np.random.uniform(size=num_feats) < shift_prob) * 1
+        shift_left_or_right = ((np.random.uniform(size=num_feats) < 0.5)*-2) + 1 # equal prob of shifting left/right
+
+        num_shifts = np.random.randint(low=1, high=max_shift + 1, size=num_feats)
+        num_shifts = num_shifts * shift_left_or_right
+        num_shifts = num_shifts * features_to_shift
+
+        for f in range(num_feats):
+            num_shift = num_shifts[f]
+            if num_shift > 0:
+                shifted_feats[num_shift:, f] = feats[:-num_shift, f] # positive shift -> shift right
+            elif num_shift < 0:
+                shifted_feats[0:num_shift, f] = feats[-num_shift:, f] # shift left
+            else:
+                shifted_feats[:, f] = feats[:, f] # just copy
+        return shifted_feats
+
     def _load_file(self, index):
         video_name = self.video_list[index]
         # video_df = pd.read_csv(self.feature_path + "csv_mean_" + str(self.temporal_scale) + "/" + video_name + ".csv")
         # video_data = video_df.values[:, :]
         video_data = np.load(self.feature_path + video_name + ".npy")
         # print(f'video_data: {video_data.shape}')
-        video_data = torch.Tensor(video_data)
-        video_data = torch.transpose(video_data, 0, 1)
-        video_data.float()
-        return video_data
+        # print(f'test: {np.mean(video_data, axis=0).shape}')
+        feats = self._get_shifted_features(video_data)
+        # feats = self._add_global_features(feats)
+
+        feats = torch.Tensor(feats)
+        feats = torch.transpose(feats, 0, 1).float()
+        return feats.float()
 
     def _get_train_label(self, index, anchor_xmin, anchor_xmax):
         video_name = self.video_list[index]
