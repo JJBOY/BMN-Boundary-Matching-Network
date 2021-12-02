@@ -13,6 +13,7 @@ class BMN(nn.Module):
         self.num_sample = opt["num_sample"]
         self.num_sample_perbin = opt["num_sample_perbin"]
         self.feat_dim=opt["feat_dim"]
+        print(f"Adding dropout = {opt['dropout']}")
 
         self.hidden_dim_1d = 256
         self.hidden_dim_2d = 128
@@ -23,7 +24,9 @@ class BMN(nn.Module):
         # Base Module
         self.x_1d_b = nn.Sequential(
             nn.Conv1d(self.feat_dim, self.hidden_dim_1d, kernel_size=3, padding=1, groups=4),
+            # nn.BatchNorm1d(self.hidden_dim_1d), 
             nn.ReLU(inplace=True),
+            nn.Dropout(p=opt["dropout"]),
             nn.Conv1d(self.hidden_dim_1d, self.hidden_dim_1d, kernel_size=3, padding=1, groups=4),
             nn.ReLU(inplace=True)
         )
@@ -32,12 +35,14 @@ class BMN(nn.Module):
         self.x_1d_s = nn.Sequential(
             nn.Conv1d(self.hidden_dim_1d, self.hidden_dim_1d, kernel_size=3, padding=1, groups=4),
             nn.ReLU(inplace=True),
+            nn.Dropout(p=opt["dropout"]),
             nn.Conv1d(self.hidden_dim_1d, 1, kernel_size=1),
             nn.Sigmoid()
         )
         self.x_1d_e = nn.Sequential(
             nn.Conv1d(self.hidden_dim_1d, self.hidden_dim_1d, kernel_size=3, padding=1, groups=4),
             nn.ReLU(inplace=True),
+            nn.Dropout(p=opt["dropout"]),
             nn.Conv1d(self.hidden_dim_1d, 1, kernel_size=1),
             nn.Sigmoid()
         )
@@ -45,6 +50,7 @@ class BMN(nn.Module):
         # Proposal Evaluation Module
         self.x_1d_p = nn.Sequential(
             nn.Conv1d(self.hidden_dim_1d, self.hidden_dim_1d, kernel_size=3, padding=1),
+            # nn.BatchNorm1d(self.hidden_dim_1d), 
             nn.ReLU(inplace=True)
         )
         self.x_3d_p = nn.Sequential(
@@ -54,8 +60,10 @@ class BMN(nn.Module):
         self.x_2d_p = nn.Sequential(
             nn.Conv2d(self.hidden_dim_3d, self.hidden_dim_2d, kernel_size=1),
             nn.ReLU(inplace=True),
+            nn.Dropout(p=opt["dropout"]),
             nn.Conv2d(self.hidden_dim_2d, self.hidden_dim_2d, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
+            nn.Dropout(p=opt["dropout"]),
             nn.Conv2d(self.hidden_dim_2d, self.hidden_dim_2d, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
             nn.Conv2d(self.hidden_dim_2d, 2, kernel_size=1),

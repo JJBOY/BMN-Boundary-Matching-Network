@@ -80,7 +80,7 @@ def validate_BMN(val_data_loader, model, epoch, bm_mask):
             val_pemclr_loss / (n_iter + 1),
             val_pemreg_loss / (n_iter + 1),
             val_loss / (n_iter + 1)))
-    
+
     return val_tem_loss / (n_iter + 1), val_pemclr_loss / (n_iter + 1), val_pemreg_loss / (n_iter + 1), val_loss / (n_iter + 1)
 
 
@@ -114,7 +114,7 @@ def BMN_Train(opt):
                                               batch_size=opt["batch_size"], shuffle=False,
                                               num_workers=8, pin_memory=True)
 
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=1, factor=opt["step_gamma"], verbose=True)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=opt["patience"], factor=opt["step_gamma"], verbose=True)
     bm_mask = get_mask(opt["temporal_scale"])
     epochs = opt["train_epochs"]
     print(f"Starting training for {epochs} epochs")
@@ -157,7 +157,7 @@ def BMN_Train(opt):
                 'scheduler_state_dict': scheduler.state_dict()}
         torch.save(state, opt["checkpoint_path"] + f"/{opt['experiment_name']}_{epoch}.pth.tar")
 
-        
+
         if not best_loss or val_loss < best_loss:
             best_loss = val_loss
             torch.save(state, opt["checkpoint_path"] + f"/{opt['experiment_name']}_BMN_best.pth.tar")
@@ -230,6 +230,10 @@ if __name__ == '__main__':
     opt_file = open(opt["checkpoint_path"] + "/opts.json", "w")
     json.dump(opt, opt_file)
     opt_file.close()
+
+    # Set random seed
+    np.random.seed(opt['random_seed'])
+    torch.manual_seed(opt['random_seed'])
 
     # model = BMN(opt)
     # a = torch.randn(1, 400, 100)

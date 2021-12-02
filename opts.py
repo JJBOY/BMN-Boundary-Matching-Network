@@ -17,14 +17,22 @@ def parse_opt():
         type=float,
         default=0.001)  # 0.001
     parser.add_argument(
+        '--optimizer',
+        type=str,
+        default="Adam")  # 0.001
+    parser.add_argument(
         '--weight_decay',
         type=float,
         default=1e-4)
+    parser.add_argument(
+        '--dropout',
+        type=float,
+        default=0.4)
 
     parser.add_argument(
         '--train_epochs',
         type=int,
-        default=15)
+        default=20)
     parser.add_argument(
         '--batch_size',
         type=int,
@@ -36,7 +44,25 @@ def parse_opt():
     parser.add_argument(
         '--step_gamma',
         type=float,
-        default=0.1)  # 0.1
+        default=0.5)  # 0.1
+    parser.add_argument(
+        '--shift_prob',
+        type=float,
+        default=0.8)
+    parser.add_argument(
+        '--max_shift',
+        type=int,
+        default=10) 
+    parser.add_argument(
+        '--patience',
+        type=int,
+        default=2)  
+
+    # Random seed for reproducibility
+    parser.add_argument(
+        '--random_seed',
+        type=int,
+        default=1)
 
     # Overall Dataset settings
     parser.add_argument(

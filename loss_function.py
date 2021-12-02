@@ -34,9 +34,9 @@ def tem_loss_func(pred_start, pred_end, gt_start, gt_end):
         num_entries = len(pmask)
         num_positive = torch.sum(pmask)
         ratio = num_entries / num_positive
-        coef_0 = 0.5 * ratio / (ratio - 1)
+        epsilon = 1e-8
+        coef_0 = 0.5 * ratio / (ratio - 1 + epsilon)
         coef_1 = 0.5 * ratio
-        epsilon = 0.000001
         loss_pos = coef_1 * torch.log(pred_score + epsilon) * pmask
         loss_neg = coef_0 * torch.log(1.0 - pred_score + epsilon) * (1.0 - pmask)
         loss = -1 * torch.mean(loss_pos + loss_neg)
@@ -84,12 +84,12 @@ def pem_cls_loss_func(pred_score, gt_iou_map, mask):
     nmask = (gt_iou_map <= 0.9).float()
     nmask = nmask * mask
 
-    num_positive = torch.sum(pmask)
+    epsilon = 1e-8
+    num_positive = torch.sum(pmask) + epsilon
     num_entries = num_positive + torch.sum(nmask)
     ratio = num_entries / num_positive
-    coef_0 = 0.5 * ratio / (ratio - 1)
+    coef_0 = 0.5 * ratio / (ratio - 1 + epsilon)
     coef_1 = 0.5 * ratio
-    epsilon = 0.000001
     loss_pos = coef_1 * torch.log(pred_score + epsilon) * pmask
     loss_neg = coef_0 * torch.log(1.0 - pred_score + epsilon) * nmask
     loss = -1 * torch.sum(loss_pos + loss_neg) / num_entries

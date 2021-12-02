@@ -4,6 +4,7 @@ import pandas as pd
 import json
 import torch.utils.data as data
 import torch
+from scipy.spatial import distance
 from utils import ioa_with_anchors, iou_with_anchors
 
 
@@ -22,6 +23,8 @@ class VideoDataSet(data.Dataset):
         self.feature_path = opt["feature_path"]
         self.video_anno_path = opt["video_anno"]
         self.video_info_path = opt["video_info"]
+        self.shift_prob = opt["shift_prob"]
+        self.max_shift = opt["max_shift"]
         self._getDatasetDict()
         self.anchor_xmin = [self.temporal_gap * (i - 0.5) for i in range(self.temporal_scale)]
         self.anchor_xmax = [self.temporal_gap * (i + 0.5) for i in range(self.temporal_scale)]
@@ -84,7 +87,7 @@ class VideoDataSet(data.Dataset):
             video_data_with_global = np.concatenate((video_data, global_mean_repeated), axis=1)
             return video_data_with_global
 
-    def _get_shifted_features(self, feats, max_shift=10, shift_prob=0.8):
+    def _get_shifted_features(self, feats, max_shift=10, shift_prob=0.5):
         num_timesteps, num_feats = feats.shape
 
         shifted_feats = np.zeros_like(feats)
@@ -92,8 +95,7 @@ class VideoDataSet(data.Dataset):
         shift_left_or_right = ((np.random.uniform(size=num_feats) < 0.5)*-2) + 1 # equal prob of shifting left/right
 
         num_shifts = np.random.randint(low=1, high=max_shift + 1, size=num_feats)
-        num_shifts = num_shifts * shift_left_or_right
-        num_shifts = num_shifts * features_to_shift
+        num_shifts = num_shifts * shift_left_or_right * features_to_shift
 
         for f in range(num_feats):
             num_shift = num_shifts[f]
@@ -105,6 +107,16 @@ class VideoDataSet(data.Dataset):
                 shifted_feats[:, f] = feats[:, f] # just copy
         return shifted_feats
 
+    def _compute_similarity(self, feats, sim_type = "cosine"): 
+        print(feats.shape)
+        similarity_scores = np.zeros((feats.shape[0], 1))
+        for i in range(1, feats.shape[0]):
+            similarity_scores[i] = 1 - distance.cosine(feats[i, :], feats[i-1, :])
+        feats_with_sim = np.concatenate((feats, similarity_scores), axis=1)
+        print(feats_with_sim.shape)
+        raise "bye for now"
+        return feats_with_sim
+
     def _load_file(self, index):
         video_name = self.video_list[index]
         # video_df = pd.read_csv(self.feature_path + "csv_mean_" + str(self.temporal_scale) + "/" + video_name + ".csv")
@@ -112,7 +124,12 @@ class VideoDataSet(data.Dataset):
         video_data = np.load(self.feature_path + video_name + ".npy")
         # print(f'video_data: {video_data.shape}')
         # print(f'test: {np.mean(video_data, axis=0).shape}')
-        feats = self._get_shifted_features(video_data)
+        if self.subset == "validation":
+            feats = video_data
+        elif self.subset == "train": 
+            feats = self._get_shifted_features(video_data, shift_prob=self.shift_prob, max_shift=self.max_shift)
+        # feats = video_data
+        # feats = self._compute_similarity(feats)
         # feats = self._add_global_features(feats)
 
         feats = torch.Tensor(feats)
