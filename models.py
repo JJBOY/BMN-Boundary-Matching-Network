@@ -15,11 +15,24 @@ class BMN(nn.Module):
         self.feat_dim=opt["feat_dim"]
         print(f"Adding dropout = {opt['dropout']}")
 
+        self._s_and_e = opt['s_and_e']
+
+
         self.hidden_dim_1d = 256
         self.hidden_dim_2d = 128
         self.hidden_dim_3d = 512
 
         self._get_interp1d_mask()
+
+        # Squeeze and Excitation
+        if self._s_and_e:
+            print("Using S&E")
+            self.channel_ratio_extractor_SE = nn.Sequential(
+                nn.Linear(self.feat_dim, opt['se_hidden_dim']), # W1_SE
+                nn.ReLU(),
+                nn.Linear(opt['se_hidden_dim'], self.feat_dim), # W2_SE
+                nn.Sigmoid()
+            )
 
         # Base Module
         self.x_1d_b = nn.Sequential(
@@ -71,6 +84,15 @@ class BMN(nn.Module):
         )
 
     def forward(self, x):
+        if self._s_and_e:
+            feature_means = torch.mean(x, dim=2) # average across time T
+            s = self.channel_ratio_extractor_SE(feature_means) # (B, 400)
+            s = torch.unsqueeze(s, dim=2) # (B, 400, 1)
+            # print(f'SE: shape:{s.shape}, sum{torch.sum(s, dim=1)} s: {s}')
+            base_input_x = x * s
+        else:
+            base_input_x = x
+
         base_feature = self.x_1d_b(x)
         start = self.x_1d_s(base_feature).squeeze(1)
         end = self.x_1d_e(base_feature).squeeze(1)

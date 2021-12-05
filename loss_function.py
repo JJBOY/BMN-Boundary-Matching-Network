@@ -32,9 +32,10 @@ def tem_loss_func(pred_start, pred_end, gt_start, gt_end):
         gt_label = gt_label.view(-1)
         pmask = (gt_label > 0.5).float()
         num_entries = len(pmask)
-        num_positive = torch.sum(pmask)
-        ratio = num_entries / num_positive
+
         epsilon = 1e-8
+        num_positive = torch.sum(pmask) + epsilon
+        ratio = num_entries / num_positive
         coef_0 = 0.5 * ratio / (ratio - 1 + epsilon)
         coef_1 = 0.5 * ratio
         loss_pos = coef_1 * torch.log(pred_score + epsilon) * pmask
@@ -54,9 +55,10 @@ def pem_reg_loss_func(pred_score, gt_iou_map, mask):
     u_lmask = ((gt_iou_map <= 0.3) & (gt_iou_map > 0.)).float()
     u_lmask = u_lmask * mask
 
-    num_h = torch.sum(u_hmask)
-    num_m = torch.sum(u_mmask)
-    num_l = torch.sum(u_lmask)
+    epsilon = 1e-8
+    num_h = torch.sum(u_hmask) + epsilon
+    num_m = torch.sum(u_mmask) + epsilon
+    num_l = torch.sum(u_lmask) + epsilon
 
     # print(f"Num L = {num_l}, Num H = {num_h}, Num M = {num_m}")
 
@@ -70,12 +72,11 @@ def pem_reg_loss_func(pred_score, gt_iou_map, mask):
     u_slmask = u_lmask * u_slmask
     u_slmask = (u_slmask > (1. - r_l)).float()
 
-    weights = u_hmask + u_smmask + u_slmask
+    weights = u_hmask + u_smmask + u_slmask + epsilon
 
     loss = F.mse_loss(pred_score * weights, gt_iou_map * weights)
     # print(f"Weights = {weights}")
     loss = 0.5 * torch.sum(loss * torch.ones(*weights.shape).cuda()) / torch.sum(weights)
-
     return loss
 
 

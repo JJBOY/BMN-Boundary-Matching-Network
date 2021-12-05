@@ -32,7 +32,7 @@ def parse_opt():
     parser.add_argument(
         '--train_epochs',
         type=int,
-        default=20)
+        default=15)
     parser.add_argument(
         '--batch_size',
         type=int,
@@ -48,11 +48,11 @@ def parse_opt():
     parser.add_argument(
         '--shift_prob',
         type=float,
-        default=0.8)
+        default=0)
     parser.add_argument(
         '--max_shift',
         type=int,
-        default=10) 
+        default=0) 
     parser.add_argument(
         '--patience',
         type=int,
@@ -129,6 +129,38 @@ def parse_opt():
         '--experiment_name',
         type=str,
         default='debug'
+    )
+    parser.add_argument(
+        '--forward_model',
+        type=str,
+        default='og_run'
+        # default='og_run'
+    )
+    parser.add_argument(
+        '--reverse_model',
+        type=str,
+        # default='reverse_OG_fixed_bug_w_dropout_noFlipConfMap'
+        default='og_reversed'
+    )
+    parser.add_argument(
+        '--reverse',
+        type=int,
+        default=0
+    )
+    parser.add_argument(
+        '--ensemble',
+        type=int,
+        default=0
+    )
+    parser.add_argument(
+        '--s_and_e',
+        type=bool,
+        default=False
+    )
+    parser.add_argument(
+        '--se_hidden_dim',
+        type=int,
+        default=100
     )
 
     args = parser.parse_args()

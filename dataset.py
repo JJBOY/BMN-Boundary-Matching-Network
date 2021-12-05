@@ -15,7 +15,7 @@ def load_json(file):
 
 
 class VideoDataSet(data.Dataset):
-    def __init__(self, opt, subset="train"):
+    def __init__(self, opt, subset="train", reverse=False):
         self.temporal_scale = opt["temporal_scale"]  # 100
         self.temporal_gap = 1. / self.temporal_scale
         self.subset = subset
@@ -28,6 +28,7 @@ class VideoDataSet(data.Dataset):
         self._getDatasetDict()
         self.anchor_xmin = [self.temporal_gap * (i - 0.5) for i in range(self.temporal_scale)]
         self.anchor_xmax = [self.temporal_gap * (i + 0.5) for i in range(self.temporal_scale)]
+        self.reverse = reverse
 
     def _getDatasetDict(self):
         # anno_df = pd.read_csv(self.video_info_path)
@@ -88,6 +89,8 @@ class VideoDataSet(data.Dataset):
             return video_data_with_global
 
     def _get_shifted_features(self, feats, max_shift=10, shift_prob=0.5):
+        if max_shift == 0:
+            return feats
         num_timesteps, num_feats = feats.shape
 
         shifted_feats = np.zeros_like(feats)
@@ -124,6 +127,13 @@ class VideoDataSet(data.Dataset):
         video_data = np.load(self.feature_path + video_name + ".npy")
         # print(f'video_data: {video_data.shape}')
         # print(f'test: {np.mean(video_data, axis=0).shape}')
+
+        '''
+        Reverse frame order
+        '''
+        if self.reverse != 0:
+            video_data = video_data[::-1].copy()
+
         if self.subset == "validation":
             feats = video_data
         elif self.subset == "train": 
@@ -153,7 +163,16 @@ class VideoDataSet(data.Dataset):
             tmp_info = video_labels[j]
             tmp_start = max(min(1, tmp_info['segment'][0] / corrected_second), 0)
             tmp_end = max(min(1, tmp_info['segment'][1] / corrected_second), 0)
-            gt_bbox.append([tmp_start, tmp_end])
+
+            '''
+            Flip start and end
+            '''
+            if self.reverse != 0:
+                gt_bbox.append([1 - tmp_end, 1 - tmp_start])
+            else:
+                gt_bbox.append([tmp_start, tmp_end])
+
+            # gt_bbox.append([tmp_start, tmp_end])
 
         ####################################################################################################
         # generate R_s and R_e

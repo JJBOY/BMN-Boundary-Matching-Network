@@ -49,6 +49,7 @@ def train_BMN(data_loader, model, optimizer, scheduler, epoch, bm_mask):
             train_pemclr_loss / (n_iter + 1),
             train_pemreg_loss / (n_iter + 1),
             train_loss / (n_iter + 1)))
+        
 
     return train_tem_loss / (n_iter + 1), train_pemclr_loss / (n_iter + 1), train_pemreg_loss / (n_iter + 1), train_loss / (n_iter + 1)
 
@@ -81,10 +82,11 @@ def validate_BMN(val_data_loader, model, epoch, bm_mask):
             val_pemreg_loss / (n_iter + 1),
             val_loss / (n_iter + 1)))
 
+
     return val_tem_loss / (n_iter + 1), val_pemclr_loss / (n_iter + 1), val_pemreg_loss / (n_iter + 1), val_loss / (n_iter + 1)
 
 
-def BMN_Train(opt):
+def BMN_Train(opt, reverse=False):
     # logging
     log_dir = './logs'
     if not os.path.exists(log_dir):
@@ -106,11 +108,11 @@ def BMN_Train(opt):
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=opt["training_lr"],
                            weight_decay=opt["weight_decay"])
 
-    train_loader = torch.utils.data.DataLoader(VideoDataSet(opt, subset="train"),
+    train_loader = torch.utils.data.DataLoader(VideoDataSet(opt, subset="train", reverse=reverse),
                                                batch_size=opt["batch_size"], shuffle=True,
                                                num_workers=8, pin_memory=True)
 
-    test_loader = torch.utils.data.DataLoader(VideoDataSet(opt, subset="validation"),
+    test_loader = torch.utils.data.DataLoader(VideoDataSet(opt, subset="validation", reverse=reverse),
                                               batch_size=opt["batch_size"], shuffle=False,
                                               num_workers=8, pin_memory=True)
 
@@ -164,14 +166,24 @@ def BMN_Train(opt):
 
 
 def BMN_inference(opt):
-    model = BMN(opt)
-    model = torch.nn.DataParallel(model, device_ids=[0, 1]).cuda()
-    print(opt["checkpoint_path"] + f"/{opt['experiment_name']}_BMN_best.pth.tar")
-    checkpoint = torch.load(opt["checkpoint_path"] + f"/{opt['experiment_name']}_BMN_best.pth.tar")
-    model.load_state_dict(checkpoint['state_dict'])
-    model.eval()
+    f_model = BMN(opt)
+    f_model = torch.nn.DataParallel(f_model, device_ids=[0, 1]).cuda()
+    f_checkpoint = torch.load(opt["checkpoint_path"] + f"/{opt['forward_model']}_BMN_best.pth.tar")
+    # r_checkpoint = torch.load(opt["checkpoint_path"] + f"/{opt['forward_model']}_BMN_best.pth.tar")
 
-    test_loader = torch.utils.data.DataLoader(VideoDataSet(opt, subset="validation"),
+    f_model.load_state_dict(f_checkpoint['state_dict'])
+    f_model.eval()
+    
+
+    if opt['ensemble'] != 0:
+        r_model = BMN(opt)
+        r_model = torch.nn.DataParallel(r_model, device_ids=[0, 1]).cuda()
+        r_checkpoint = torch.load(opt["checkpoint_path"] + f"/{opt['reverse_model']}_BMN_best.pth.tar")
+        r_model.load_state_dict(r_checkpoint['state_dict'])
+        r_model.eval()
+
+
+    test_loader = torch.utils.data.DataLoader(VideoDataSet(opt, subset="validation", reverse=False),
                                               batch_size=1, shuffle=False,
                                               num_workers=8, pin_memory=True, drop_last=False)
     tscale = opt["temporal_scale"]
@@ -179,11 +191,33 @@ def BMN_inference(opt):
         for idx, input_data in tqdm(test_loader, total=len(test_loader)):
             video_name = test_loader.dataset.video_list[idx[0]]
             input_data = input_data.cuda()
-            confidence_map, start, end = model(input_data)
+            confidence_map, start, end = f_model(input_data)
 
-            # print(start.shape,end.shape,confidence_map.shape)
             start_scores = start[0].detach().cpu().numpy()
             end_scores = end[0].detach().cpu().numpy()
+
+            if opt['ensemble'] != 0:
+                input_data_time_flipped = torch.flip(input_data, dims=(2,))
+                r_confidence_map, r_start, r_end = r_model(input_data_time_flipped)
+                r_end = torch.flip(r_end, dims=(1,))
+                r_start = torch.flip(r_start, dims=(1,))
+                r_confidence_map = torch.transpose(torch.flip(r_confidence_map, dims=(2, 3)), 2, 3)
+
+                r_start_scores = r_end[0].detach().cpu().numpy()
+                r_end_scores = r_start[0].detach().cpu().numpy()
+
+                start_scores = (start_scores + r_start_scores) / 2
+                end_scores = (end_scores + r_end_scores) / 2
+
+                clr_confidence = (confidence_map[0][1]).detach().cpu().numpy()
+                reg_confidence = (confidence_map[0][0]).detach().cpu().numpy()
+
+                r_clr_confidence = (r_confidence_map[0][1]).detach().cpu().numpy()
+                r_reg_confidence = (r_confidence_map[0][0]).detach().cpu().numpy()
+
+                clr_confidence = (clr_confidence + r_clr_confidence) / 2
+                reg_confidence = (reg_confidence + r_reg_confidence) / 2
+                
             clr_confidence = (confidence_map[0][1]).detach().cpu().numpy()
             reg_confidence = (confidence_map[0][0]).detach().cpu().numpy()
 
@@ -211,7 +245,11 @@ def BMN_inference(opt):
 
 def main(opt):
     if opt["mode"] == "train":
-        BMN_Train(opt)
+        if opt["reverse"] == 0:
+            reverse = False
+        else:
+            reverse = True
+        BMN_Train(opt, reverse=reverse)
     elif opt["mode"] == "inference":
         if not os.path.exists("output/BMN_results"):
             os.makedirs("output/BMN_results")
